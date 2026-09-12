@@ -92,7 +92,9 @@ GALERIAS = [
 
 # Fichas que NO son tiendas (la galeria misma, mercados). Se saltan al guardar.
 EXCLUIR_CATEGORIAS = ["Centro comercial", "Galería comercial", "Mercado", "Estacionamiento", "Parque",
-                      "Banco", "Cajero automático", "Comisaría", "Iglesia", "Hospital", "Escuela", "Colegio"]
+                      "Banco", "Cajero automático", "Comisaría", "Iglesia", "Hospital", "Escuela", "Colegio",
+                      "Escuela técnica", "Restaurante", "Restaurante peruano", "Gimnasio",
+                      "Servicio de transporte", "Servicio de mudanzas y almacenamiento"]
 
 # Cadenas grandes que no son tiendas del cluster (el cliente quiere comerciantes de galeria)
 EXCLUIR_NOMBRES = ["sodimac", "promart", "maestro ", "plaza vea", "tottus", "metro ", "wong ", "makro",
