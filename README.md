@@ -76,9 +76,22 @@ python run.py --solo-exportar --nombre Base --lote 500   # regenerar Excel y par
 
 ## Columnas del Excel
 
-Nombre · Rubro · Dirección · Distancia (km) · Teléfono · Teléfono +51 · Tipo (celular/fijo) ·
-Posible WhatsApp · WhatsApp (del sitio) · Otros teléfonos · Correo · Otros correos ·
-Sitio web · Facebook · Instagram · Rating · Reseñas · Google Maps · Búsqueda · Fuente
+Galería · Galería (cómo se ubicó) · Nombre · Rubro · Dirección · Calle · Distancia (km) ·
+Teléfono · Teléfono +51 · Posible WhatsApp · WhatsApp (del sitio) · Otros teléfonos · Correo ·
+Otros correos · Sitio web · Facebook · Instagram · Rating · Google Maps · Fuente
+
+El libro trae la hoja *Tiendas* completa, *Resumen*, *Notas*, *Por galería* (conteo) y
+**una hoja por galería**, más *Sin galería (por calle)* para los locales a pie de calle.
+
+### Separación por galería (`galerias.py`)
+
+Google Maps solo pone la galería en ~1 de cada 4 direcciones, así que se combinan tres
+métodos, del más seguro al menos: (1) el nombre o un alias de la galería aparece en la
+dirección o en el nombre de la tienda; (2) la dirección coincide con la de la galería
+(calle + número: "Av. Argentina 608" es Malvinas Plaza); (3) la ficha está a menos de 60 m
+de la galería (Maps suele poner a las tiendas de una galería en el mismo punto; se marca
+como *aprox.*). Las coordenadas de cada galería salieron de sus propias fichas de Maps y,
+para las que no tienen ficha, del centroide de las tiendas que sí la mencionan.
 
 **Posible WhatsApp = Sí** cuando el número es celular peruano (empieza con 9). No se
 verifica contra WhatsApp. **WhatsApp (del sitio)** es el número del botón "Chatea con
@@ -108,7 +121,7 @@ nosotros" de la propia web: ese sí es seguro.
 ## Ajustes (`config.py`)
 
 `CENTRO_LAT/LNG` y `RADIO_KM` (zona), `RUBROS`, `RUBROS_EXTRA`, `CALLES`, `GALERIAS`
-(qué buscar), `MUESTRA_RUBROS`, `EXCLUIR_CATEGORIAS`, `EXCLUIR_NOMBRES`, `PAGINAS_CONTACTO`,
+(qué buscar; los alias y coordenadas de cada galería están en `galerias.GALERIAS`), `MUESTRA_RUBROS`, `EXCLUIR_CATEGORIAS`, `EXCLUIR_NOMBRES`, `PAGINAS_CONTACTO`,
 `TIMEOUT_WEB`, `HEADLESS`.
 
 ## Herramientas evaluadas

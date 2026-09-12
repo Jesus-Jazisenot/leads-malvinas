@@ -3,15 +3,19 @@
 Exporta el progreso (JSONL) a Excel y CSV listos para entregar.
 """
 import os
+import re
 import unicodedata
 from datetime import datetime
 
 import pandas as pd
-
 import phonenumbers
+from openpyxl.utils import get_column_letter
 
 import config
+import galerias
 from config import CARPETA_SALIDA
+
+SIN_GALERIA = "(sin galeria)"
 
 
 def _local(e164):
@@ -24,7 +28,8 @@ def _local(e164):
         return e164
 
 COLUMNAS = [
-    ("nombre", "Nombre"), ("categoria", "Rubro"), ("direccion", "Direccion"),
+    ("galeria", "Galeria"), ("galeria_metodo", "Galeria (como se ubico)"),
+    ("nombre", "Nombre"), ("categoria", "Rubro"), ("direccion", "Direccion"), ("calle", "Calle"),
     ("distancia_km", "Distancia (km)"), ("telefono", "Telefono"), ("telefono_e164", "Telefono +51"),
     ("posible_whatsapp", "Posible WhatsApp"), ("whatsapp_web", "WhatsApp (del sitio)"), ("telefonos_extra", "Otros telefonos"),
     ("correo", "Correo"), ("correos_extra", "Otros correos"), ("sitio_web", "Sitio web"),
@@ -70,6 +75,13 @@ def exportar(tiendas, nombre="leads_malvinas", lote=None):
         if t.get("telefonos_extra"):
             limpios = [x for x in t["telefonos_extra"].split("; ") if x and x not in repetidos and x != t.get("telefono_e164")]
             t["telefonos_extra"] = "; ".join(limpios) or None
+    # galeria de cada tienda (el cliente quiere el Excel separado por galerias)
+    galerias.asignar_todas(filas)
+    for t in filas:
+        t["calle"] = galerias.calle_de(t.get("direccion"))
+        t["galeria"] = t.get("galeria") or SIN_GALERIA
+        t["galeria_metodo"] = {"direccion": "en la direccion", "numero": "misma direccion que la galeria",
+                               "cercania": "por cercania (aprox.)"}.get(t.get("galeria_metodo"))
     df = pd.DataFrame(filas)
     for k, _ in COLUMNAS:
         if k not in df.columns:
@@ -79,7 +91,11 @@ def exportar(tiendas, nombre="leads_malvinas", lote=None):
     # las mas completas primero
     df["_score"] = df["Telefono +51"].notna().astype(int) * 2 + df["Correo"].notna().astype(int) + \
                    df["WhatsApp (del sitio)"].notna().astype(int)
-    df = df.sort_values(["_score", "Distancia (km)"], ascending=[False, True]).drop(columns="_score")
+    # galerias con mas tiendas primero, "(sin galeria)" al final; dentro de cada una, las mas completas
+    orden = df["Galeria"].value_counts().to_dict()
+    df["_gal"] = df["Galeria"].map(lambda g: (1, 0) if g == SIN_GALERIA else (0, -orden.get(g, 0)))
+    df = df.sort_values(["_gal", "Galeria", "_score", "Distancia (km)"],
+                        ascending=[True, True, False, True]).drop(columns=["_score", "_gal"])
 
     os.makedirs(CARPETA_SALIDA, exist_ok=True)
     stamp = datetime.now().strftime("%Y-%m-%d")
@@ -94,18 +110,33 @@ def exportar(tiendas, nombre="leads_malvinas", lote=None):
     return xlsx, csv, resumen
 
 
+_ANCHOS = {"Galeria": 26, "Galeria (como se ubico)": 22, "Nombre": 34, "Rubro": 22, "Direccion": 40, "Calle": 22,
+           "Distancia (km)": 12, "Telefono": 16, "Telefono +51": 16, "Tipo": 9, "Posible WhatsApp": 14,
+           "WhatsApp (del sitio)": 18, "Otros telefonos": 30, "Correo": 30, "Otros correos": 30, "Sitio web": 32,
+           "Facebook": 32, "Instagram": 28, "Rating": 8, "Resenas": 9, "Google Maps": 40, "Busqueda": 20, "Fuente": 10}
+
+
+def _hoja(w, df, nombre):
+    df.to_excel(w, index=False, sheet_name=nombre)
+    ws = w.sheets[nombre]
+    ws.freeze_panes = "A2"
+    ws.auto_filter.ref = ws.dimensions
+    for i, col in enumerate(df.columns):
+        ws.column_dimensions[get_column_letter(i + 1)].width = _ANCHOS.get(col, 16)
+
+
+def _nombre_hoja(g, usados):
+    n = re.sub(r"[\/*?:\[\]]", "", g)[:28] or "Galeria"
+    base, k = n, 2
+    while n in usados:
+        n, k = f"{base[:25]} {k}", k + 1
+    usados.add(n)
+    return n
+
+
 def _escribir(df, xlsx, csv):
     with pd.ExcelWriter(xlsx, engine="openpyxl") as w:
-        df.to_excel(w, index=False, sheet_name="Tiendas")
-        ws = w.sheets["Tiendas"]
-        ws.freeze_panes = "A2"
-        ws.auto_filter.ref = ws.dimensions
-        anchos = {"Nombre": 34, "Rubro": 22, "Direccion": 40, "Distancia (km)": 12, "Telefono": 16,
-                  "Telefono +51": 16, "Tipo": 9, "Posible WhatsApp": 14, "WhatsApp (del sitio)": 18,
-                  "Otros telefonos": 30, "Correo": 30, "Otros correos": 30, "Sitio web": 32, "Facebook": 32,
-                  "Instagram": 28, "Rating": 8, "Resenas": 9, "Google Maps": 40, "Busqueda": 20, "Fuente": 10}
-        for i, col in enumerate(df.columns):
-            ws.column_dimensions[chr(65 + i)].width = anchos.get(col, 16)
+        _hoja(w, df, "Tiendas")
         # hoja resumen
         resumen = pd.DataFrame({
             "Metrica": ["Tiendas", "Con telefono", "Celular (posible WhatsApp)", "Con correo",
@@ -131,10 +162,28 @@ def _escribir(df, xlsx, csv):
             "Correo: solo aparece cuando la tienda lo publica en su web o en malvinas.pe. Google Maps no da correos.",
             "Distancia (km) = distancia en linea recta desde Jr. Ascope 541 (vacia si la tienda no tiene ficha en Maps).",
             "Fuente 'directorio+gmaps' = vendedor de malvinas.pe cuya ficha de Maps tambien se encontro (direccion y rating vienen de ahi).",
-            "Las filas estan ordenadas: primero las que tienen telefono + correo + WhatsApp, luego por cercania.",
+            "Galeria: se toma de la direccion cuando Maps la trae; si no, por la direccion de la galeria "
+            "(misma calle y numero) o por cercania (menos de 60 m de la galeria; marcado como aprox.). "
+            "Las que quedan en la calle van en la hoja 'Sin galeria (por calle)', agrupadas por avenida/jiron.",
+            "Hay una hoja por galeria (mismas columnas) y la hoja 'Por galeria' con el conteo.",
+            "Las filas estan ordenadas por galeria (las que tienen mas tiendas primero) y dentro de cada una, "
+            "primero las que tienen telefono + correo + WhatsApp, luego por cercania.",
             "Se excluyeron galerias, mercados, parques, bancos, cadenas grandes y fichas sin ningun contacto.",
         ]})
         notas.to_excel(w, index=False, sheet_name="Notas")
         w.sheets["Notas"].column_dimensions["A"].width = 120
+        # una hoja por galeria (en el orden de la tabla) y una final con las de calle
+        usados = {"Tiendas", "Resumen", "Notas", "Por galeria"}
+        por_gal = df.groupby("Galeria", sort=False).size()
+        pd.DataFrame({"Galeria": por_gal.index, "Tiendas": por_gal.values}).to_excel(w, index=False, sheet_name="Por galeria")
+        w.sheets["Por galeria"].column_dimensions["A"].width = 30
+        for g, bloque in df.groupby("Galeria", sort=False):
+            if g == SIN_GALERIA:
+                continue
+            _hoja(w, bloque.drop(columns=["Galeria", "Calle"]), _nombre_hoja(g, usados))
+        resto = df[df["Galeria"] == SIN_GALERIA]
+        if len(resto):
+            resto = resto.sort_values(["Calle", "Distancia (km)"], na_position="last")
+            _hoja(w, resto.drop(columns=["Galeria", "Galeria (como se ubico)"]), "Sin galeria (por calle)")
     df.to_csv(csv, index=False, encoding="utf-8-sig")
     return resumen

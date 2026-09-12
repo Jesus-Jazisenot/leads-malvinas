@@ -26,6 +26,9 @@ Para empezar de cero, borrar `salida/progreso.jsonl`.
 - `--ia` cuesta dinero (~2 ¢ por ficha con claude-opus-5): decir cuántas fichas va a
   revisar antes de lanzarlo.
 - Facebook/Instagram no se scrapean; solo se guarda el enlace.
+- El cliente quiere el Excel separado por galerias: `exportar.py` escribe una hoja por galeria
+  y ordena por galeria; si una galeria nueva aparece en las direcciones, agregar alias/coordenadas
+  en `galerias.GALERIAS`.
 - Si Google Maps deja de dar teléfonos, revisar los selectores `data-item-id` en
   `maps_scraper.leer_ficha()`; si `--web` trae basura, agregar el dominio a
   `web_discovery._DOMINIOS_FUERA`.
@@ -36,4 +39,5 @@ Para empezar de cero, borrar `salida/progreso.jsonl`.
 `places_api.py` Places API · `web_discovery.py` directorio + búsqueda web + PDF ·
 `web_enricher.py` correos/wa.me desde el sitio · `completar.py` cruce de fuentes para huecos · `fetch.py` descarga con fallback a
 Chrome para Cloudflare · `ia_limpieza.py` limpieza con Claude · `exportar.py` Excel/CSV ·
+`galerias.py` asigna cada tienda a su galeria (texto, numero de calle, cercania) ·
 `run.py` orquestador.
