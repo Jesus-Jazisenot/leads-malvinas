@@ -1,0 +1,10 @@
+# datos del cliente y resultados: nunca al repo
+salida/
+*.xlsx
+*.csv
+*.jsonl
+# binario de google-maps-scraper (60 MB): bajarlo de sus releases
+tools/*.exe
+__pycache__/
+*.pyc
+.env

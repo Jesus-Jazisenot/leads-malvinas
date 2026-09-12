@@ -1,0 +1,9 @@
+playwright
+requests
+beautifulsoup4
+pandas
+openpyxl
+phonenumbers
+ddgs
+pypdf
+anthropic
