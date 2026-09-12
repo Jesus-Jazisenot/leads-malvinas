@@ -14,6 +14,7 @@ from openpyxl.utils import get_column_letter
 import config
 import galerias
 from config import CARPETA_SALIDA
+from utils import fusionar
 
 SIN_GALERIA = "(sin galeria)"
 MIN_HOJA_GALERIA = 3      # galerias con menos tiendas comparten la hoja "Otras galerias"
@@ -64,6 +65,7 @@ def exportar(tiendas, nombre="leads_malvinas", lote=None):
         if not t.get("direccion") and "directorio" in (t.get("fuente") or ""):
             t["direccion"] = "Vende en malvinas.pe (sin local ubicado en Maps)"
         filas.append(t)
+    filas = _fusionar_repetidas(filas)
     # un numero que aparece como "extra" en dos o mas tiendas distintas suele ser del
     # diseñador web o de una plantilla, no de la tienda: fuera de "Otros telefonos"
     conteo = {}
@@ -135,6 +137,51 @@ def _nombre_hoja(g, usados):
         n, k = f"{base[:25]} {k}", k + 1
     usados.add(n)
     return n
+
+
+def _clave_nombre(nombre):
+    n = unicodedata.normalize("NFKD", (nombre or "").lower())
+    n = "".join(c for c in n if not unicodedata.combining(c))
+    n = re.sub(r"(s\.?a\.?c\.?|e\.?i\.?r\.?l\.?|s\.?r\.?l\.?|s\.?a\.?|sac|eirl|srl)", "", n)
+    return re.sub(r"[^a-z0-9]+", " ", n).strip()
+
+
+def _fusionar_repetidas(filas):
+    """La misma tienda vista por dos fuentes con telefonos distintos (Maps da uno,
+    Paginas Amarillas otro) o el mismo telefono en dos fichas: se deja una fila y el
+    otro numero pasa a 'Otros telefonos'. Misma tienda = mismo telefono, o mismo nombre
+    y mismo numero de calle (o, sin numero, a menos de 100 m)."""
+    por_clave = {}
+    salida = []
+    for t in filas:
+        claves = []
+        if t.get("telefono_e164"):
+            claves.append(("tel", t["telefono_e164"]))
+        nom = _clave_nombre(t.get("nombre"))
+        if len(nom) >= 4:
+            m = re.search(r"(\d{2,5})", t.get("direccion") or "")
+            if m:
+                claves.append(("dir", nom, m.group(1)))
+            elif t.get("lat") is not None:
+                claves.append(("geo", nom, round(t["lat"], 3), round(t["lng"], 3)))
+        previa = next((por_clave[c] for c in claves if c in por_clave), None)
+        if previa is None:
+            salida.append(t)
+            for c in claves:
+                por_clave[c] = t
+            continue
+        tel_previo = previa.get("telefono_e164")
+        fusionar(previa, t)
+        extras = [x for x in (previa.get("telefonos_extra") or "").split("; ") if x]
+        for n in [t.get("telefono_e164"), t.get("whatsapp_web")] + (t.get("telefonos_extra") or "").split("; "):
+            if n and n != tel_previo and n not in extras:
+                extras.append(n)
+        previa["telefonos_extra"] = "; ".join(extras[:5]) or None
+        if not previa.get("galeria_metodo") and t.get("galeria"):
+            previa["galeria"], previa["galeria_metodo"] = t["galeria"], t["galeria_metodo"]
+        for c in claves:
+            por_clave.setdefault(c, previa)
+    return salida
 
 
 def _escribir(df, xlsx, csv):
