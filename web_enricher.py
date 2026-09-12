@@ -47,7 +47,7 @@ def enriquecer(tienda, log=print):
         return False
     rutas = [r for r in PAGINAS_CONTACTO if r]
     with ThreadPoolExecutor(max_workers=len(rutas)) as pool:
-        otras = pool.map(lambda r: fetch.html(urllib.parse.urljoin(base.rstrip("/") + "/", r)), rutas)
+        otras = pool.map(lambda r: fetch.html(urllib.parse.urljoin(base.rstrip("/") + "/", r), navegador=False), rutas)
     paginas = [("", portada)] + list(zip(rutas, otras))
 
     for ruta, html in paginas:

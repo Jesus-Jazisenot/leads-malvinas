@@ -10,6 +10,8 @@ una sola vez y se reutiliza.
 import atexit
 import io
 
+import threading
+
 import requests
 import urllib3
 
@@ -25,6 +27,10 @@ _pw = _navegador = _pagina = None
 
 def _con_navegador(url):
     global _pw, _navegador, _pagina
+    # Playwright sync no se puede usar desde otro hilo (greenlet "cannot switch to a
+    # different thread"); las descargas en paralelo del enricher se quedan sin fallback
+    if threading.current_thread() is not threading.main_thread():
+        return None
     if _pagina is None:
         from playwright.sync_api import sync_playwright
         _pw = sync_playwright().start()
@@ -57,8 +63,8 @@ def _get(url, timeout=TIMEOUT_WEB, **kw):
         return requests.get(url, headers=_HEADERS, timeout=timeout, allow_redirects=True, verify=False, **kw)
 
 
-def html(url):
-    """HTML de una pagina, o None. Cae a Playwright si Cloudflare bloquea."""
+def html(url, navegador=True):
+    """HTML de una pagina, o None. Cae a Playwright si Cloudflare bloquea (solo desde el hilo principal)."""
     try:
         r = _get(url)
     except requests.RequestException:
@@ -66,10 +72,10 @@ def html(url):
     tipo = r.headers.get("Content-Type", "")
     if r.status_code == 200 and "html" in tipo:
         if "Just a moment" in r.text[:3000]:
-            return _con_navegador(url)
+            return _con_navegador(url) if navegador else None
         return r.text
     if r.status_code in (403, 503, 429):
-        return _con_navegador(url)
+        return _con_navegador(url) if navegador else None
     return None
 
 
