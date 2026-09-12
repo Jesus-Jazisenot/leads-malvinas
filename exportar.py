@@ -16,6 +16,7 @@ import galerias
 from config import CARPETA_SALIDA
 
 SIN_GALERIA = "(sin galeria)"
+MIN_HOJA_GALERIA = 3      # galerias con menos tiendas comparten la hoja "Otras galerias"
 
 
 def _local(e164):
@@ -167,7 +168,8 @@ def _escribir(df, xlsx, csv):
             "Galeria: se toma de la direccion cuando Maps la trae; si no, por la direccion de la galeria "
             "(misma calle y numero) o por cercania (menos de 60 m de la galeria; marcado como aprox.). "
             "Las que quedan en la calle van en la hoja 'Sin galeria (por calle)', agrupadas por avenida/jiron.",
-            "Hay una hoja por galeria (mismas columnas) y la hoja 'Por galeria' con el conteo.",
+            "Hay una hoja por galeria (mismas columnas); las galerias con menos de 3 tiendas van juntas en "
+            "'Otras galerias (pocas)'. La hoja 'Por galeria' trae el conteo completo.",
             "Las filas estan ordenadas por galeria: primero Nicolini, La Bellota, Plaza Ferretero y Malvitec "
             "(las prioritarias), luego las demas por cantidad de tiendas; dentro de cada una, "
             "primero las que tienen telefono + correo + WhatsApp, luego por cercania.",
@@ -180,10 +182,15 @@ def _escribir(df, xlsx, csv):
         por_gal = df.groupby("Galeria", sort=False).size()
         pd.DataFrame({"Galeria": por_gal.index, "Tiendas": por_gal.values}).to_excel(w, index=False, sheet_name="Por galeria")
         w.sheets["Por galeria"].column_dimensions["A"].width = 30
+        # galerias con muy pocas tiendas (nombres sueltos que Maps trae una vez) van juntas
+        chicas = {g for g, n in por_gal.items() if n < MIN_HOJA_GALERIA and g not in galerias.PRIORIDAD}
         for g, bloque in df.groupby("Galeria", sort=False):
-            if g == SIN_GALERIA:
+            if g == SIN_GALERIA or g in chicas:
                 continue
             _hoja(w, bloque.drop(columns=["Galeria", "Calle"]), _nombre_hoja(g, usados))
+        otras = df[df["Galeria"].isin(chicas)]
+        if len(otras):
+            _hoja(w, otras.drop(columns=["Calle"]), "Otras galerias (pocas)")
         resto = df[df["Galeria"] == SIN_GALERIA]
         if len(resto):
             resto = resto.sort_values(["Calle", "Distancia (km)"], na_position="last")
