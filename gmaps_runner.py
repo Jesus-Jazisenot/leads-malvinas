@@ -143,9 +143,23 @@ def _procesar(filas, consultas, ya_vistos, limite, log, cada_tienda, nuevas=0):
 def reprocesar(ruta_json, ya_vistos, log=print, cada_tienda=None, limite=None):
     """Vuelve a pasar por `cada_tienda` un resultados.json ya generado (p. ej. tras
     ampliar RADIO_KM, sin gastar consultas nuevas)."""
-    filas = _leer(ruta_json)
-    log(f"> reprocesando {ruta_json}: {len(filas)} filas")
-    return _procesar(filas, [], ya_vistos, limite, log, cada_tienda)
+    # linea por linea (cada linea es una consulta) para no cargar 30+ MB de JSON en memoria
+    log(f"> reprocesando {ruta_json}")
+    nuevas = 0
+    with open(ruta_json, encoding="utf-8") as f:
+        for linea in f:
+            linea = linea.strip()
+            if not linea:
+                continue
+            try:
+                dato = json.loads(linea)
+            except json.JSONDecodeError:
+                continue
+            filas = [x for x in (dato if isinstance(dato, list) else [dato]) if x]
+            nuevas += _procesar(filas, [], ya_vistos, limite, log, cada_tienda, nuevas)
+            if limite and nuevas >= limite:
+                break
+    return nuevas
 
 
 def scrapear(consultas, ya_vistos, limite=None, log=print, cada_tienda=None, grid=False, celda_km=0.7, **_):
