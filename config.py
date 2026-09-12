@@ -62,6 +62,22 @@ CALLES = [
     "Av. Tingo Maria", "Jr. Pacasmayo", "Av. Enrique Meiggs", "Jr. Huarochiri",
 ]
 
+# Galerias prioritarias (el cliente, 12-sep-2026: "el corazon del cluster"). Van
+# primero en el Excel y `--foco` les dedica una pasada extra de consultas.
+GALERIAS_FOCO = {
+    "Nicolini": ["Nicolini", "C.C. Nicolini", "Centro Comercial Nicolini", "galeria Nicolini",
+                 "Av. Argentina 215", "Jr. Huarochiri 18"],
+    "La Bellota": ["La Bellota", "C.C. La Bellota", "Centro Comercial La Bellota", "Bellota 2", "Bellota 3",
+                   "Av. Argentina 725", "Av. Argentina 308"],
+    "Plaza Ferretero": ["Plaza Ferretero", "C.C. Plaza Ferretero", "Centro Comercial Plaza Ferretero",
+                        "Av. Guillermo Dansey 405", "Jr. Huarochiri 620"],
+    "Malvitec": ["Malvitec", "C.C. Malvitec", "Centro Comercial Malvitec", "galeria Malvitec", "Av. Argentina 460"],
+}
+# Palabras genericas que se cruzan con cada variante en `--foco` (ademas de los rubros)
+PALABRAS_FOCO = ["tienda", "tiendas", "stand", "local", "puesto", "importaciones", "importadora", "distribuidora",
+                 "comercial", "inversiones", "corporacion", "grupo", "SAC", "EIRL", "SRL", "ventas", "mayorista",
+                 "representaciones", "negocios", "multiservicios"]
+
 # ---- Galerias del cluster (lista que mando el cliente, 11-sep-2026) -----------
 # Se buscan tal cual en Maps; Google devuelve las tiendas que estan "dentro" de
 # cada galeria cuando la busqueda es "tiendas en <galeria>".

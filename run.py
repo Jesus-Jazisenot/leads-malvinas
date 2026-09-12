@@ -48,6 +48,8 @@ def main():
     ap.add_argument("--galerias", action="store_true", help="buscar 'tiendas en <galeria>' por cada galeria")
     ap.add_argument("--rubros", action="store_true", help="buscar por todos los rubros")
     ap.add_argument("--cruzado", action="store_true", help="cada rubro x cada galeria")
+    ap.add_argument("--foco", action="store_true",
+                    help="pasada extra sobre config.GALERIAS_FOCO: (rubros + PALABRAS_FOCO) x cada variante de nombre/direccion")
     ap.add_argument("--completo", action="store_true",
                     help="(rubros + RUBROS_EXTRA) x (centro + galerias + CALLES); miles de consultas, para gmaps fast-mode")
     ap.add_argument("--consulta", nargs="+", metavar="TEXTO", help="busquedas sueltas")
@@ -102,7 +104,8 @@ def main():
                 total += directorio_malvinas(set(tiendas), log=print, cada_tienda=guardar, limite=args.muestra)
             if args.amarillas:
                 from amarillas import scrapear as scrapear_amarillas
-                total += scrapear_amarillas(config.RUBROS + config.RUBROS_EXTRA, set(tiendas), limite=args.muestra,
+                nombres_foco = [v for vs in config.GALERIAS_FOCO.values() for v in vs if not v[0].isupper() or not any(ch.isdigit() for ch in v)]
+                total += scrapear_amarillas(nombres_foco + config.RUBROS + config.RUBROS_EXTRA, set(tiendas), limite=args.muestra,
                                             log=print, cada_tienda=guardar)
             if args.gmaps_json:
                 from gmaps_runner import reprocesar
@@ -111,7 +114,7 @@ def main():
                 from web_discovery import busqueda_web, consultas_web
                 cons = consultas_web(rubros=args.consulta) if args.consulta else consultas_web()
                 total += busqueda_web(cons, set(tiendas), log=print, cada_tienda=guardar, limite=args.muestra)
-            if not (args.directorio or args.web or args.ia or args.completar or args.amarillas or args.gmaps_json) or args.galerias or args.rubros or args.cruzado or args.completo:
+            if not (args.directorio or args.web or args.ia or args.completar or args.amarillas or args.gmaps_json) or args.galerias or args.rubros or args.cruzado or args.completo or args.foco:
                 consultas = []
                 if args.consulta and not args.web:
                     consultas += args.consulta
@@ -121,6 +124,9 @@ def main():
                     consultas += config.RUBROS
                 if args.cruzado:
                     consultas += [f"{r} {g}" for g in config.GALERIAS for r in config.RUBROS]
+                if args.foco:
+                    palabras = config.PALABRAS_FOCO + config.RUBROS + config.RUBROS_EXTRA
+                    consultas += [f"{p} {v}" for vs in config.GALERIAS_FOCO.values() for v in vs for p in palabras]
                 if args.completo:
                     todos = config.RUBROS + config.RUBROS_EXTRA
                     lugares = [""] + config.GALERIAS + config.CALLES

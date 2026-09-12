@@ -22,6 +22,9 @@ from utils import distancia_km
 
 RADIO_GALERIA_M = 60
 
+# Orden en el Excel: primero las que el cliente marco como prioritarias (12-sep-2026)
+PRIORIDAD = ["Nicolini", "La Bellota", "La Bellota 2", "La Bellota 3", "Plaza Ferretero", "Malvitec"]
+
 # nombre canonico -> (aliases regex, direcciones (calle regex, numero), lat, lng)
 GALERIAS = {
     "Malvitec":                     (r"malvitec",                                   [(r"argentina", "460")], -12.0428996, -77.0480596),

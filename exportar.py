@@ -93,7 +93,9 @@ def exportar(tiendas, nombre="leads_malvinas", lote=None):
                    df["WhatsApp (del sitio)"].notna().astype(int)
     # galerias con mas tiendas primero, "(sin galeria)" al final; dentro de cada una, las mas completas
     orden = df["Galeria"].value_counts().to_dict()
-    df["_gal"] = df["Galeria"].map(lambda g: (1, 0) if g == SIN_GALERIA else (0, -orden.get(g, 0)))
+    prio = {g: i for i, g in enumerate(galerias.PRIORIDAD)}
+    df["_gal"] = df["Galeria"].map(lambda g: (2, 0) if g == SIN_GALERIA else
+                                   (0, prio[g]) if g in prio else (1, -orden.get(g, 0)))
     df = df.sort_values(["_gal", "Galeria", "_score", "Distancia (km)"],
                         ascending=[True, True, False, True]).drop(columns=["_score", "_gal"])
 
@@ -166,7 +168,8 @@ def _escribir(df, xlsx, csv):
             "(misma calle y numero) o por cercania (menos de 60 m de la galeria; marcado como aprox.). "
             "Las que quedan en la calle van en la hoja 'Sin galeria (por calle)', agrupadas por avenida/jiron.",
             "Hay una hoja por galeria (mismas columnas) y la hoja 'Por galeria' con el conteo.",
-            "Las filas estan ordenadas por galeria (las que tienen mas tiendas primero) y dentro de cada una, "
+            "Las filas estan ordenadas por galeria: primero Nicolini, La Bellota, Plaza Ferretero y Malvitec "
+            "(las prioritarias), luego las demas por cantidad de tiendas; dentro de cada una, "
             "primero las que tienen telefono + correo + WhatsApp, luego por cercania.",
             "Se excluyeron galerias, mercados, parques, bancos, cadenas grandes y fichas sin ningun contacto.",
         ]})
